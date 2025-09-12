@@ -1,0 +1,60 @@
+SET SERVEROUTPUT ON;
+DECLARE
+    ROLL O_ROLLCALL.ROLL%TYPE;
+    NAME O_ROLLCALL.SNAME%TYPE;
+    MAIL O_ROLLCALL.EMAIL%TYPE;
+    V_ROLL N_ROLLCALL.ROLL%TYPE := &INPUT_ROLL;
+
+    CURSOR CUR IS
+        SELECT ROLL, SNAME, EMAIL FROM O_ROLLCALL WHERE ROLL NOT IN (SELECT ROLL FROM N_ROLLCALL);
+
+    CURSOR CUR_ROLL(P_ROLL N_ROLLCALL.ROLL%TYPE) IS
+        SELECT ROLL, SNAME, EMAIL FROM N_ROLLCALL WHERE ROLL = P_ROLL;
+
+    V_FOUND BOOLEAN := FALSE;
+
+BEGIN
+    -- IMPLICIT
+    DBMS_OUTPUT.PUT_LINE('IMPLICIT CURSOR');
+    DBMS_OUTPUT.PUT_LINE('Updating roll from 1 to 11');
+    UPDATE N_ROLLCALL SET ROLL = 1 WHERE ROLL = 11;
+    DBMS_OUTPUT.PUT_LINE('Records updated: ' || SQL%ROWCOUNT);
+    DBMS_OUTPUT.PUT_LINE('----------------------------------------------------------------------------------------------');
+
+    -- EXPLICIT
+    DBMS_OUTPUT.PUT_LINE('EXPLICIT CURSOR');
+    DBMS_OUTPUT.PUT_LINE('Merging O_ROLLCALL and N_ROLLCALL');
+    OPEN CUR;
+    LOOP
+        FETCH CUR INTO ROLL, NAME, MAIL;
+        IF CUR%NOTFOUND THEN 
+            EXIT;
+        END IF;
+        INSERT INTO N_ROLLCALL(ROLL, SNAME, EMAIL) VALUES(ROLL, NAME, MAIL);
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE('Records merged');
+    DBMS_OUTPUT.PUT_LINE('----------------------------------------------------------------------------------------------');
+    CLOSE CUR;
+
+    -- FOR CURSOR
+    DBMS_OUTPUT.PUT_LINE('FOR CURSOR');
+    DBMS_OUTPUT.PUT_LINE('Fetching merged records');
+    FOR rec IN (SELECT ROLL, SNAME, EMAIL FROM N_ROLLCALL) LOOP
+        DBMS_OUTPUT.PUT_LINE('Roll: ' || rec.ROLL || ', Name: ' || rec.SNAME || ', Email: ' || rec.EMAIL);
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE('----------------------------------------------------------------------------------------------');
+
+    -- PARAMETERIZED
+    DBMS_OUTPUT.PUT_LINE('PARAMETERIZED CURSOR');
+    DBMS_OUTPUT.PUT_LINE('Record of entered roll no.:');
+    FOR REC IN CUR_ROLL(V_ROLL) LOOP
+        V_FOUND := TRUE;
+        DBMS_OUTPUT.PUT_LINE('Roll: ' || REC.ROLL || ', Name: ' || REC.SNAME || ', Email: ' || REC.EMAIL);
+    END LOOP;
+
+    IF NOT V_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('No record found for Roll: ' || V_ROLL);
+    END IF;
+END;
+/
+
